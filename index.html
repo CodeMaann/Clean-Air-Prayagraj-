@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CleanAir Prayagraj</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+      :root {
+        --bg-slate: #111827;
+        --bg-panel: #1f2937;
+        --text-main: #f9fafb;
+        --text-muted: #9ca3af;
+        --border-color: #374151;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg-slate);
+        color: var(--text-main);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #map {
+        flex: 1;
+        height: 100%;
+        background-color: #0b0f19;
+      }
+      #sidebar {
+        width: 380px;
+        background-color: var(--bg-panel);
+        border-left: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+      }
+      .header, .snapshot-row, .non-scrollable-panel {
+        flex-shrink: 0;
+      }
+      .header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-color);
+        background: #111827;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+      }
+      .header p {
+        margin: 5px 0 0 0;
+        font-size: 12px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+      }
+      .snapshot-row {
+        display: flex;
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+        gap: 10px;
+      }
+      .stat-box {
+        flex: 1;
+        background: var(--bg-slate);
+        padding: 12px 10px;
+        border-radius: 6px;
+        text-align: center;
+        border: 1px solid var(--border-color);
+      }
+      .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .stat-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+      }
+      .feed-container {
+        flex: 1;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .feed-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .hotspot-card {
+        background: var(--bg-slate);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: transform 0.1s, border-color 0.2s;
+      }
+      .hotspot-card:hover {
+        transform: translateY(-2px);
+        border-color: #6b7280;
+      }
+      .hotspot-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .station-name {
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .aqi-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 12px;
+        color: #000;
+      }
+      .hotspot-details {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+      }
+      .action-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #fbbf24;
+        background: rgba(251, 191, 36, 0.1);
+        padding: 6px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      
+      .upload-section {
+        padding: 20px;
+        border-top: 1px solid var(--border-color);
+        background: #111827;
+      }
+      .upload-section h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+      }
+      .file-input-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+        width: 100%;
+      }
+      .btn {
+        width: 100%;
+        background: #374151;
+        color: white;
+        border: 1px solid #4b5563;
+        padding: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        text-align: center;
+        transition: background 0.2s;
+      }
+      .btn:hover {
+        background: #4b5563;
+      }
+      .file-input-wrapper input[type=file] {
+        font-size: 100px;
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      #upload-result {
+        margin-top: 10px;
+        font-size: 12px;
+        padding: 10px;
+        background: var(--bg-panel);
+        border-radius: 4px;
+        display: none;
+      }
+      
+      /* Modal */
+      #chart-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        background: var(--bg-panel);
+        border-radius: 12px;
+        width: 800px;
+        max-width: 90vw;
+        padding: 25px;
+        border: 1px solid var(--border-color);
+        position: relative;
+      }
+      .close-btn {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+      }
+      
+      .leaflet-popup-content-wrapper {
+        background: var(--bg-panel);
+        color: var(--text-main);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+      }
+      .leaflet-popup-tip {
+        background: var(--bg-panel);
+      }
+      .popup-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+        font-size: 14px;
+      }
+      .popup-stat {
+        margin: 2px 0;
+        font-size: 12px;
+      }
+      
+      .loading-spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+        margin-right: 8px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      .citizen-report-icon {
+        background: #111827;
+        border: 2px dashed #fbbf24;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      }
+      
+      @media (max-width: 768px) {
+        body {
+          flex-direction: column;
+        }
+        #map {
+          height: 60vh;
+          flex: none;
+        }
+        #sidebar {
+          width: 100%;
+          height: 40vh;
+          flex: none;
+          overflow-y: auto;
+        }
+        .feed-container {
+          flex: none;
+        }
+        #hotspots-list {
+          flex: none !important;
+          overflow-y: visible !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="location-banner" style="display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: #fbbf24; color: #000; padding: 10px 20px; border-radius: 8px; z-index: 1000; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+      Tap anywhere on the map to mark where this photo was taken.
+    </div>
+    <div id="map"></div>
+    <div id="sidebar">
+      <div class="header">
+        <h1>CLEANAIR PRAYAGRAJ<span style="font-size: 10px; background: rgba(255,255,255,0.1); color: #9ca3af; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 8px; font-weight: normal; letter-spacing: 0.5px;">SIMULATED DATA</span></h1>
+        <p>Municipal Hotspot Console • Track 2</p>
+      </div>
+      
+      <div class="snapshot-row">
+        <div class="stat-box">
+          <div class="stat-value" id="stat-avg-aqi">--</div>
+          <div class="stat-label">Avg AQI</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="stat-hotspots">--</div>
+          <div class="stat-label">Hotspots</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="stat-worst-aqi">--</div>
+          <div class="stat-label">Worst AQI</div>
+        </div>
+      </div>
+      <div style="font-size: 10px; color: #6b7280; text-align: center; margin-bottom: 8px; padding: 0 10px; line-height: 1.4;">
+        Station readings are seeded/simulated for this demo. Station locations are real Prayagraj geography — see README for the CPCB/WAQI live-data integration path.
+      </div>
+      <div id="weather-note" style="margin-bottom: 20px; font-size: 11px; color: #9ca3af; text-align: center; font-style: italic; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 4px;">--</div>
+      
+      <div class="feed-container" style="flex: 1; display: flex; flex-direction: column;">
+        <div style="flex-shrink: 0;">
+          <div class="feed-title">Active Hotspot Alerts</div>
+          <input type="text" id="hotspot-search" placeholder="Filter by station name..." style="width: 100%; padding: 8px; margin-bottom: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-slate); color: var(--text-main); box-sizing: border-box;" />
+        </div>
+        <div id="hotspots-list" style="flex: 1; overflow-y: auto; min-height: 260px;">
+          <!-- Dynamic -->
+        </div>
+      </div>
+      
+      <details class="non-scrollable-panel" style="border-top: 1px solid var(--border-color); background: var(--bg-slate);">
+        <summary style="padding: 15px; font-weight: bold; font-size: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; outline: none; user-select: none;">
+          🔧 Tools & Dispatch
+          <span style="font-size: 10px; background: #374151; padding: 2px 6px; border-radius: 4px;">EXPAND</span>
+        </summary>
+        <div style="padding: 0 15px 15px 15px;">
+          <div style="margin-bottom: 20px;">
+            <div class="feed-title">Dispatch Log</div>
+            <p style="margin: 0 0 10px 0; font-size: 11px; color: var(--text-muted); line-height: 1.3;">
+              Demo mode — in production this would trigger SMS/email alerts to municipal teams.
+            </p>
+            <div id="dispatch-list" style="max-height: 150px; overflow-y: auto;">
+              <!-- Dynamic -->
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 20px; padding-top: 15px; border-top: 1px solid var(--border-color);">
+            <h3 style="margin: 0 0 5px 0; font-size: 14px; display: flex; align-items: center; justify-content: space-between;">
+              Satellite Haze Index
+              <span style="font-size: 10px; background: #374151; padding: 2px 6px; border-radius: 4px;">PROTOTYPE</span>
+            </h3>
+            <p style="margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+              Toggle the "Satellite" map layer (top right) to see where live imagery would be analyzed for smoke plumes or dust in a production environment.
+            </p>
+          </div>
+          
+          <div class="upload-section" style="padding-top: 15px; border-top: 1px solid var(--border-color); border-bottom: none; background: transparent;">
+            <h3 style="margin: 0 0 10px 0; font-size: 14px;">Citizen Photo Report</h3>
+            <div class="file-input-wrapper">
+              <button type="button" class="btn" id="upload-btn-text">Select Image</button>
+              <input type="file" id="photo-upload" accept="image/*" />
+            </div>
+            <div id="upload-result"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+    
+    <div id="chart-modal">
+      <div class="modal-content">
+        <button type="button" class="close-btn" id="close-modal">&times;</button>
+        <h2 id="modal-station-name" style="margin-top: 0; margin-bottom: 5px;">Station</h2>
+        <p style="color: #9ca3af; margin-bottom: 20px; font-size: 14px;">48h Observed + 24h Forecast (PM2.5)</p>
+        <div style="height: 400px; width: 100%;">
+          <canvas id="forecastChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+      // Color Palette logic
+      function getAqiColor(aqi) {
+        if (aqi <= 50) return '#00E400';
+        if (aqi <= 100) return '#FFFF00';
+        if (aqi <= 150) return '#FF7E00';
+        if (aqi <= 200) return '#FF0000';
+        if (aqi <= 300) return '#8F3F97';
+        return '#7E0023';
+      }
+      
+      function getAqiCategory(aqi) {
+        if (aqi <= 50) return 'Good';
+        if (aqi <= 100) return 'Moderate';
+        if (aqi <= 150) return 'Unhealthy-Sensitive';
+        if (aqi <= 200) return 'Unhealthy';
+        if (aqi <= 300) return 'Very Unhealthy';
+        return 'Hazardous';
+      }
+
+      function getTextColor(aqi) {
+        if (aqi <= 100) return '#000000';
+        return '#FFFFFF';
+      }
+
+      // Init Map
+      const map = L.map('map', {
+        center: [25.4358, 81.8463],
+        zoom: 12,
+        zoomControl: false
+      });
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+      // Dark CARTO basemap
+      const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+      });
+      
+      const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
+        maxZoom: 20
+      });
+      
+      darkLayer.addTo(map);
+      
+      const baseMaps = {
+        "Dark Map": darkLayer,
+        "Satellite": satelliteLayer
+      };
+      
+      L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+
+      let markers = {};
+      let chartInstance = null;
+      let reportMarkers = [];
+      let globalStations = [];
+      let globalHotspots = [];
+      let globalDispatches = [];
+      
+      // timeAgo utility
+      function timeAgo(dateString) {
+        const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
+        let interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + " years ago";
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + " months ago";
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + " days ago";
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + " hours ago";
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + " mins ago";
+        return Math.floor(seconds) + " secs ago";
+      }
+
+      function renderStationsList() {
+        const listEl = document.getElementById('hotspots-list');
+        listEl.innerHTML = '';
+        
+        const searchQuery = document.getElementById('hotspot-search').value.trim().toLowerCase();
+        
+        let itemsToRender = [];
+        let isSearching = false;
+        
+        if (searchQuery) {
+          isSearching = true;
+          itemsToRender = globalStations.filter(st => st.name.toLowerCase().includes(searchQuery));
+          if (itemsToRender.length === 0) {
+            listEl.innerHTML = '<div style="color: #9ca3af; font-size: 14px; text-align: center; margin-top: 40px;">No stations found.</div>';
+            return;
+          }
+        } else {
+          itemsToRender = globalHotspots;
+          if (itemsToRender.length === 0) {
+            listEl.innerHTML = '<div style="color: #9ca3af; font-size: 14px; text-align: center; margin-top: 40px;">No active hotspots detected.</div>';
+            return;
+          }
+        }
+        
+        itemsToRender.forEach(item => {
+          let h = null;
+          let st = null;
+          
+          if (isSearching) {
+            st = item;
+            h = globalHotspots.find(hotspot => hotspot.station.id === st.id);
+          } else {
+            h = item;
+            st = h.station;
+          }
+          
+          const aqiToUse = h ? h.latestAqi : st.latestAqi;
+          const color = getAqiColor(aqiToUse);
+          const tcolor = getTextColor(aqiToUse);
+          
+          const el = document.createElement('div');
+          el.className = 'hotspot-card';
+          
+          if (h) {
+            const isDispatched = globalDispatches.some(d => d.stationId === st.id && d.action === h.recommendedAction);
+            
+            let sparklineSvg = '';
+            if (h.trend && h.trend.length > 0) {
+              const maxVal = Math.max(...h.trend);
+              const minVal = Math.min(...h.trend);
+              const padding = 2;
+              const w = 150;
+              const h_svg = 24;
+              const range = maxVal - minVal || 1;
+              const points = h.trend.map((val, i) => {
+                const x = padding + (i / (h.trend.length - 1)) * (w - 2 * padding);
+                const y = padding + (1 - (val - minVal) / range) * (h_svg - 2 * padding);
+                return `${x},${y}`;
+              }).join(' ');
+              sparklineSvg = `
+                <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                  <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">6h Trend</span>
+                  <svg width="${w}" height="${h_svg}" viewBox="0 0 ${w} ${h_svg}" style="overflow: visible;">
+                    <polyline points="${points}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              `;
+            }
+            
+            el.innerHTML = `
+              <div class="hotspot-header">
+                <span class="station-name">${st.name}</span>
+                <span class="aqi-badge" style="background:${color}; color:${tcolor}">${h.latestAqi} AQI</span>
+              </div>
+              <div class="hotspot-details">
+                Spike: +${h.percentAboveBaseline}% over 24h baseline (Z: ${h.zScore})
+              </div>
+              ${sparklineSvg}
+              <div class="action-label" style="display:flex; flex-direction:column; align-items:flex-start; gap: 8px;">
+                <span style="line-height: 1.4;">🚨 ACTION: ${h.recommendedAction}</span>
+                <button type="button" class="dispatch-btn" data-id="${st.id}" data-name="${st.name}" data-action="${h.recommendedAction}" ${isDispatched ? 'disabled' : ''} style="background: ${isDispatched ? '#4b5563' : '#ef4444'}; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: ${isDispatched ? 'default' : 'pointer'}; align-self: flex-end;">
+                  ${isDispatched ? 'Dispatched ✓' : 'Dispatch Alert'}
+                </button>
+              </div>
+            `;
+          } else {
+            el.innerHTML = `
+              <div class="hotspot-header">
+                <span class="station-name">${st.name}</span>
+                <span class="aqi-badge" style="background:${color}; color:${tcolor}">${aqiToUse} AQI</span>
+              </div>
+              <div class="hotspot-details">
+                Status: ${getAqiCategory(aqiToUse)}
+              </div>
+            `;
+          }
+          
+          el.onclick = (e) => {
+            if (e.target.tagName !== 'BUTTON') {
+              openChartModal(st);
+            }
+          };
+          listEl.appendChild(el);
+        });
+        
+        // Attach dispatch button handlers
+        document.querySelectorAll('.dispatch-btn').forEach(btn => {
+          btn.onclick = async (e) => {
+            e.stopPropagation();
+            if (btn.disabled) return;
+            btn.innerText = 'Sending...';
+            btn.disabled = true;
+            try {
+              await fetch('/api/dispatch-alert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  stationId: btn.dataset.id,
+                  stationName: btn.dataset.name,
+                  action: btn.dataset.action
+                })
+              });
+              updateDashboard();
+            } catch (err) {
+              console.error('Dispatch failed', err);
+              btn.innerText = 'Failed';
+            }
+          };
+        });
+      }
+
+      async function updateDashboard() {
+        try {
+          // Fetch stations and hotspots
+          const [stationsRes, hotspotsRes, reportsRes, dispatchRes] = await Promise.all([
+            fetch('/api/stations'),
+            fetch('/api/hotspots'),
+            fetch('/api/citizen-reports'),
+            fetch('/api/dispatch-log')
+          ]);
+          
+          globalStations = await stationsRes.json();
+          const { hotspots, stats } = await hotspotsRes.json();
+          globalHotspots = hotspots;
+          const reports = await reportsRes.json();
+          globalDispatches = await dispatchRes.json();
+          
+          // Update stats
+          document.getElementById('stat-avg-aqi').innerText = stats.avgAqi;
+          document.getElementById('stat-avg-aqi').style.color = getAqiColor(stats.avgAqi);
+          document.getElementById('stat-hotspots').innerText = stats.activeHotspots;
+          if(stats.activeHotspots > 0) document.getElementById('stat-hotspots').style.color = '#FF0000';
+          else document.getElementById('stat-hotspots').style.color = '#00E400';
+          
+          document.getElementById('stat-worst-aqi').innerText = stats.worstAqi;
+          document.getElementById('stat-worst-aqi').style.color = getAqiColor(stats.worstAqi);
+          document.getElementById('weather-note').innerText = stats.weatherLabel;
+
+          renderStationsList();
+
+          // Render dispatch log
+          const dispatchListEl = document.getElementById('dispatch-list');
+          dispatchListEl.innerHTML = '';
+          if (globalDispatches.length === 0) {
+            dispatchListEl.innerHTML = '<div style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 10px;">No alerts dispatched yet.</div>';
+          } else {
+            // Show latest first
+            [...globalDispatches].reverse().forEach(d => {
+              const dEl = document.createElement('div');
+              dEl.style.cssText = 'background: #111827; border: 1px solid #374151; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 12px;';
+              dEl.innerHTML = `
+                <div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
+                  <strong style="color:white;">${d.stationName}</strong>
+                  <span style="color:#10b981;">✓ SENT</span>
+                </div>
+                <div style="color:#fbbf24; margin-bottom: 4px;">${d.action}</div>
+                <div style="color:#9ca3af; font-size:11px;">${timeAgo(d.timestamp)}</div>
+              `;
+              dispatchListEl.appendChild(dEl);
+            });
+          }
+
+          const hotspotStationIds = new Set(globalHotspots.map(h => h.station.id));
+
+          // Fetch all histories to update map markers
+          for (const st of globalStations) {
+            const histRes = await fetch('/api/history/' + st.id);
+            const histData = await histRes.json();
+            const latest = histData[histData.length - 1];
+            
+            const aqiColor = getAqiColor(latest.aqi);
+            const isHotspot = hotspotStationIds.has(st.id);
+            const radius = isHotspot ? 14 : 8;
+            
+            if (!markers[st.id]) {
+              const marker = L.circleMarker([st.lat, st.lng], {
+                radius: radius,
+                fillColor: aqiColor,
+                color: isHotspot ? '#ffffff' : '#111827',
+                weight: isHotspot ? 3 : 1,
+                opacity: 1,
+                fillOpacity: 0.9
+              }).addTo(map);
+              
+              const popupContent = `
+                <div class="popup-title">${st.name}</div>
+                <div class="popup-stat">Type: ${st.type}</div>
+                <div class="popup-stat" style="color:${aqiColor}; font-weight:bold;">AQI: ${latest.aqi} (${getAqiCategory(latest.aqi)})</div>
+                <div class="popup-stat">PM2.5: ${latest.pm25.toFixed(1)} µg/m³</div>
+                <button type="button" onclick="window.openChartForStation('${st.id}')" style="margin-top:8px; width:100%; padding:6px 0; background:var(--bg-slate); border:1px solid var(--border-color); color:var(--text-main); border-radius:4px; font-size:12px; cursor:pointer; font-weight:bold;">View Full Forecast</button>
+              `;
+              marker.bindPopup(popupContent);
+              
+              markers[st.id] = marker;
+            } else {
+              // Update existing
+              markers[st.id].setRadius(radius);
+              markers[st.id].setStyle({
+                fillColor: aqiColor,
+                color: isHotspot ? '#ffffff' : '#111827',
+                weight: isHotspot ? 3 : 1
+              });
+              const popupContent = `
+                <div class="popup-title">${st.name}</div>
+                <div class="popup-stat">Type: ${st.type}</div>
+                <div class="popup-stat" style="color:${aqiColor}; font-weight:bold;">AQI: ${latest.aqi} (${getAqiCategory(latest.aqi)})</div>
+                <div class="popup-stat">PM2.5: ${latest.pm25.toFixed(1)} µg/m³</div>
+                <button type="button" onclick="window.openChartForStation('${st.id}')" style="margin-top:8px; width:100%; padding:6px 0; background:var(--bg-slate); border:1px solid var(--border-color); color:var(--text-main); border-radius:4px; font-size:12px; cursor:pointer; font-weight:bold;">View Full Forecast</button>
+              `;
+              markers[st.id].setPopupContent(popupContent);
+            }
+          }
+          
+          // Render citizen reports
+          reportMarkers.forEach(m => map.removeLayer(m));
+          reportMarkers = [];
+          
+          reports.forEach(r => {
+            if (r.lat && r.lng) {
+              const icon = L.divIcon({
+                className: 'citizen-report-icon',
+                html: '📷',
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+              });
+              const marker = L.marker([r.lat, r.lng], { icon }).addTo(map);
+              marker.bindPopup(`
+                <div class="popup-title">Citizen Report</div>
+                <div class="popup-stat">Submitted: ${timeAgo(r.timestamp)}</div>
+                <div class="popup-stat">Severity: <span style="text-transform:capitalize; color: ${r.severity==='high'?'#ef4444':'#fbbf24'}">${r.severity}</span></div>
+                <div class="popup-stat" style="color:#9ca3af;font-style:italic;">"${r.description}"</div>
+              `);
+              reportMarkers.push(marker);
+            }
+          });
+        } catch (e) {
+          if (e.message !== "Failed to fetch") {
+            console.error("Dashboard update failed", e);
+          }
+        }
+      }
+
+      window.openChartForStation = (id) => {
+        const st = globalStations.find(s => s.id === id);
+        if (st) openChartModal(st);
+      };
+
+      async function openChartModal(station) {
+        document.getElementById('modal-station-name').innerText = station.name;
+        document.getElementById('chart-modal').style.display = 'flex';
+        
+        // Pan map
+        map.setView([station.lat, station.lng], 14, { animate: true });
+        if(markers[station.id]) markers[station.id].openPopup();
+        
+        try {
+          const [histRes, forecastRes] = await Promise.all([
+            fetch('/api/history/' + station.id),
+            fetch('/api/forecast/' + station.id)
+          ]);
+          const history = await histRes.json();
+          const forecast = await forecastRes.json();
+          
+          renderChart(history, forecast);
+        } catch (e) {
+          if (e.message !== "Failed to fetch") {
+            console.error("Failed to load chart data", e);
+          }
+        }
+      }
+
+      document.getElementById('close-modal').onclick = () => {
+        document.getElementById('chart-modal').style.display = 'none';
+        if (chartInstance) {
+          chartInstance.destroy();
+          chartInstance = null;
+        }
+      };
+
+      function renderChart(history, forecast) {
+        const ctx = document.getElementById('forecastChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        
+        const histLabels = history.map(d => {
+          const t = new Date(d.time);
+          return t.getHours() + ':00';
+        });
+        const histData = history.map(d => d.pm25);
+        
+        const foreLabels = forecast.map(d => {
+          const t = new Date(d.time);
+          return t.getHours() + ':00';
+        });
+        const foreData = forecast.map(d => d.pm25);
+        
+        const lastHist = history[history.length - 1];
+        const labels = [...histLabels, ...foreLabels];
+        
+        const historySeries = [...histData, ...Array(forecast.length).fill(null)];
+        const forecastSeries = [...Array(history.length - 1).fill(null), lastHist.pm25, ...foreData];
+        
+        chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Observed PM2.5',
+                data: historySeries,
+                borderColor: '#FF7E00',
+                backgroundColor: 'rgba(255, 126, 0, 0.1)',
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: true,
+                tension: 0.3
+              },
+              {
+                label: 'Forecast PM2.5',
+                data: forecastSeries,
+                borderColor: '#3b82f6',
+                borderDash: [5, 5],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                tension: 0.3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            plugins: {
+              legend: {
+                labels: { color: '#9ca3af' }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: '#374151' },
+                ticks: {
+                  color: '#9ca3af',
+                  maxTicksLimit: 12
+                }
+              },
+              y: {
+                grid: { color: '#374151' },
+                ticks: { color: '#9ca3af' },
+                title: { display: true, text: 'PM2.5 (µg/m³)', color: '#9ca3af' }
+              }
+            }
+          }
+        });
+      }
+
+      // Photo Upload logic
+      const photoUpload = document.getElementById('photo-upload');
+      const uploadBtnText = document.getElementById('upload-btn-text');
+      const uploadResult = document.getElementById('upload-result');
+      
+      let pendingPhotoFile = null;
+      let pickingLocation = false;
+
+      photoUpload.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        pendingPhotoFile = file;
+        
+        if (navigator.geolocation) {
+          uploadBtnText.innerHTML = '<span class="loading-spinner"></span> Getting location...';
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              submitPhoto(pendingPhotoFile, lat, lng);
+            },
+            (error) => {
+              startLocationPick();
+            },
+            { timeout: 5000 }
+          );
+        } else {
+          startLocationPick();
+        }
+      });
+
+      function startLocationPick() {
+        pickingLocation = true;
+        uploadBtnText.innerText = 'Waiting for map click...';
+        document.getElementById('location-banner').style.display = 'block';
+        map.getContainer().style.cursor = 'crosshair';
+      }
+
+      map.on('click', function(e) {
+        if (pickingLocation) {
+          pickingLocation = false;
+          document.getElementById('location-banner').style.display = 'none';
+          map.getContainer().style.cursor = '';
+          submitPhoto(pendingPhotoFile, e.latlng.lat, e.latlng.lng);
+        }
+      });
+
+      async function submitPhoto(file, lat, lng) {
+        uploadBtnText.innerHTML = '<span class="loading-spinner"></span> Analyzing...';
+        uploadResult.style.display = 'none';
+        
+        const formData = new FormData();
+        formData.append('photo', file);
+        formData.append('lat', lat);
+        formData.append('lng', lng);
+        
+        try {
+          const res = await fetch('/api/analyze-photo', {
+            method: 'POST',
+            body: formData
+          });
+          const result = await res.json();
+          
+          if (result.error) {
+            uploadResult.innerHTML = `<span style="color: #ef4444">Error: ${result.error}</span>`;
+          } else {
+            let html = `<strong>Analysis Complete</strong><br/>`;
+            if(result.fallback) {
+              html += `<span style="color:#fbbf24;font-size:11px;">(Fallback: No API Key)</span><br/>`;
+            }
+            html += `Smoke: ${result.smoke_detected ? 'Yes' : 'No'} | Dust: ${result.dust_detected ? 'Yes' : 'No'}<br/>`;
+            html += `Severity: <span style="text-transform:capitalize; color: ${result.severity==='high'?'#ef4444':'#fbbf24'}">${result.severity}</span><br/>`;
+            html += `<span style="color:#9ca3af;font-style:italic;">"${result.description}"</span>`;
+            uploadResult.innerHTML = html;
+            
+            updateDashboard(); // fetch and redraw citizen reports
+          }
+        } catch (err) {
+          uploadResult.innerHTML = `<span style="color: #ef4444">Upload failed.</span>`;
+        }
+        
+        uploadResult.style.display = 'block';
+        uploadBtnText.innerText = 'Select Image';
+        photoUpload.value = ''; // reset
+      }
+
+      // Initial load
+      updateDashboard();
+      // Auto-refresh every 60s
+      setInterval(updateDashboard, 60000);
+      
+
+      // Hotspot Search Filter
+      const searchInput = document.getElementById('hotspot-search');
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          renderStationsList();
+        });
+      }
+    </script>
+  </body>
+</html>
