@@ -39,9 +39,20 @@ A live console covering **~45 monitoring points** across Prayagraj that:
 
 ## Screenshots
 
-*(add your captured screenshots here before submitting — see deck for which
-views to capture: full dashboard, hotspot popup, forecast modal, satellite
-layer, citizen photo report, dispatch log)*
+**Full Dashboard & Active Hotspot Alerts**
+![Full Dashboard](images/dashboard-dark.jpg.png)
+
+**Satellite Haze Index Prototyping**
+![Satellite View](images/Screenshot%202026-07-08%20120350.png)
+
+**Citizen Photo Reports & Dispatch Log**
+![Citizen Report and Dispatch](images/Screenshot%202026-07-08%20120436.png)
+
+**Station-Level 24-Hour Forecast & Baseline Anomaly (Naini)**
+![Naini Forecast](images/Screenshot%202026-07-08%20120203.png)
+
+**Station-Level 24-Hour Forecast & Baseline Anomaly (Phaphamau)**
+![Phaphamau Forecast](images/Screenshot%202026-07-08%20120223.png)
 
 ## Running Locally
 
@@ -54,6 +65,8 @@ npm run dev            # or: npx tsx server.ts
 ```
 
 Open `http://localhost:3000`.
+
+## Working URL- https://clean-air-prayagraj.onrender.com/
 
 ## ⚠️ Data Disclosure
 
